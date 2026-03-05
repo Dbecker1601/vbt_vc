@@ -1,0 +1,15 @@
+# Core RL / environment dependencies
+gymnasium>=0.26.0
+stable-baselines3>=2.0.0
+
+# Data
+numpy>=1.24.0
+pandas>=2.0.0
+yfinance>=0.2.30
+
+# Plotting
+matplotlib>=3.7.0
+
+# PyTorch (CPU) – SB3 backend
+# If you have a GPU, replace with: torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+torch>=2.0.0
