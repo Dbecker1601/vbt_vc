@@ -30,5 +30,17 @@ tb_logs/
 results.png
 example_result.png
 
+# Secrets – NIEMALS einchecken!
+.env
+
+# Daten-Cache (kann groß werden)
+data/cache/
+
+# Gespeicherte Modelle
+models/
+
+# Logs
+logs/
+
 # macOS
 .DS_Store

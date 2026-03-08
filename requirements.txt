@@ -2,14 +2,26 @@
 gymnasium>=0.26.0
 stable-baselines3>=2.0.0
 
-# Data
+# Data – market data fetching
 numpy>=1.24.0
 pandas>=2.0.0
-yfinance>=0.2.30
+ccxt>=4.0.0              # Krypto, Futures, Forex via 100+ Exchanges
+yfinance>=0.2.30         # Fallback: Aktien, ETFs (Yahoo Finance)
+pyarrow>=14.0.0          # Parquet-Caching für lokale Datenspeicherung
+
+# Backtesting
+vectorbt>=0.26.0         # Portfolio-Simulation und Performance-Metriken
 
 # Plotting
 matplotlib>=3.7.0
 
+# Configuration & Secrets
+python-dotenv>=1.0.0     # API-Keys sicher aus .env laden
+PyYAML>=6.0.0            # YAML-Konfigurationsdateien
+
 # PyTorch (CPU) – SB3 backend
-# If you have a GPU, replace with: torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+# GPU: ersetze durch: torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
 torch>=2.0.0
+
+# Hyperparameter-Optimierung (optional)
+# optuna>=3.0.0
