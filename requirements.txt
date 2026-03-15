@@ -7,6 +7,9 @@ numpy>=1.24.0
 pandas>=2.0.0
 yfinance>=0.2.30
 
+# CCXT – exchange connectivity and Level-2 order book data
+ccxt>=4.2.0
+
 # Plotting
 matplotlib>=3.7.0
 
