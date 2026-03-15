@@ -4,12 +4,11 @@ train_bitcoin.py – End-to-end training script for the Bitcoin deep-RL agent.
 Pipeline
 --------
 1. Download historical OHLCV from any CCXT exchange (default: Binance BTC/USDT).
-2. (Optionally) attach a real L2 DataFrame; otherwise L2 features are simulated.
-3. Split data into train / test sets.
-4. Validate environment with SB3 check_env.
-5. Train a PPO agent with TensorBoard logging.
-6. Evaluate the trained agent on the test set.
-7. Render and save the result chart.
+2. Split data into train / test sets.
+3. Validate environment with SB3 check_env.
+4. Train a PPO agent with TensorBoard logging.
+5. Evaluate the trained agent on the test set.
+6. Render and save the result chart.
 
 Usage examples
 --------------
@@ -57,7 +56,7 @@ def load_data_from_ccxt(
     import ccxt
 
     print(f"[data] Fetching {symbol} {timeframe} from {exchange} "
-          f"({start} → {end}) …")
+          f"({start} -> {end}) ...")
 
     exchange_obj = getattr(ccxt, exchange)()
     since = int(
@@ -109,11 +108,10 @@ def split_data(df: pd.DataFrame, train_ratio: float = 0.8):
 # Environment factory
 # ---------------------------------------------------------------------------
 
-def make_env(df: pd.DataFrame, window_size: int, frame_bound, l2_df=None):
+def make_env(df: pd.DataFrame, window_size: int, frame_bound):
     """Create a monitored BitcoinEnv."""
     env = BitcoinEnv(
         df=df,
-        l2_df=l2_df,
         window_size=window_size,
         frame_bound=frame_bound,
     )
@@ -129,31 +127,32 @@ def train(
     window_size: int,
     timesteps: int,
     model_path: str,
+    learning_rate: float,
     tb_log_dir: str = "./tb_logs/",
 ) -> PPO:
     frame_bound = (window_size, len(df_train))
     env = make_env(df_train, window_size, frame_bound)
 
-    print("[env] Validating training environment …")
+    print("[env] Validating training environment ...")
     check_env(env, warn=True)
 
     print(f"[train] Observation space : {env.observation_space.shape}")
     print(f"[train] Action space      : {env.action_space.n} actions")
-    print(f"[train] Training for {timesteps:,} timesteps …")
+    print(f"[train] Training for {timesteps:,} timesteps ...")
 
     model = PPO(
         "MlpPolicy",
         env,
         n_steps=2048,
         batch_size=64,
-        learning_rate=3e-4,
+        learning_rate=learning_rate,
         ent_coef=0.01,
         verbose=1,
         tensorboard_log=tb_log_dir,
     )
     model.learn(total_timesteps=timesteps, progress_bar=True)
     model.save(model_path)
-    print(f"[train] Model saved → {model_path}.zip")
+    print(f"[train] Model saved -> {model_path}.zip")
     return model
 
 
@@ -183,18 +182,18 @@ def evaluate(
     total_profit = np.exp(total_reward)
     max_profit   = env.max_possible_profit()
 
-    print("\n[eval] ── Test-set results ─────────────────────────")
+    print("\n[eval] -- Test-set results -------------------------")
     print(f"       Total reward        : {total_reward:.6f}")
-    print(f"       Total profit        : {total_profit:.4f}×  ({(total_profit-1)*100:.2f} %)")
-    print(f"       Max possible profit : {max_profit:.4f}×")
+    print(f"       Total profit        : {total_profit:.4f}x  ({(total_profit-1)*100:.2f} %)")
+    print(f"       Max possible profit : {max_profit:.4f}x")
     print(f"       Agent / max ratio   : {total_profit / max_profit:.2%}")
-    print("───────────────────────────────────────────────────\n")
+    print("---------------------------------------------------\n")
 
     env.render_all(
         title=f"BTC – PPO  |  Profit {total_profit:.4f}×  |  Max {max_profit:.4f}×",
         save_path=save_fig,
     )
-    print(f"[eval] Chart saved → {save_fig}")
+    print(f"[eval] Chart saved -> {save_fig}")
 
     return {
         "total_reward":  total_reward,
@@ -209,7 +208,7 @@ def evaluate(
 
 def parse_args(argv=None):
     p = argparse.ArgumentParser(
-        description="Train a PPO agent on Bitcoin OHLCV + L2 data via CCXT."
+        description="Train a PPO agent on Bitcoin OHLCV data via CCXT."
     )
 
     # Data source
@@ -235,6 +234,8 @@ def parse_args(argv=None):
                    help="Fraction of data used for training (default: 0.8).")
     p.add_argument("--timesteps",   type=int,   default=200_000,
                    help="Total PPO training timesteps (default: 200 000).")
+    p.add_argument("--learning-rate", type=float, default=3e-4,
+                   help="PPO learning rate (default: 3e-4).")
 
     # Paths
     p.add_argument("--model-path", default="ppo_bitcoin",
@@ -276,6 +277,7 @@ def main(argv=None):
         window_size=args.window,
         timesteps=args.timesteps,
         model_path=args.model_path,
+        learning_rate=args.learning_rate,
         tb_log_dir=args.tb_log,
     )
 

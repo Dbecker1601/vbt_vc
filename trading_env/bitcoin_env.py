@@ -1,10 +1,10 @@
 """
-BitcoinEnv – deep-RL trading environment for Bitcoin with Level-2 features.
+BitcoinEnv – deep-RL trading environment for Bitcoin (OHLCV + technical features).
 
 Observation vector (flat, per step):
-    [window_size × 16 features]  +  [position_value]  +  [tick_ratio]
+    [window_size × 8 features]  +  [position_value]  +  [tick_ratio]
 
-16 features per tick = 8 OHLCV/technical + 8 Level-2 order-book:
+8 features per tick = OHLCV/technical indicators:
 
   OHLCV / technical indicators (8):
     0  log_return        – log price return vs previous bar
@@ -16,15 +16,6 @@ Observation vector (flat, per step):
     6  bb_pos            – Bollinger-Band position, clipped to [−1, 1]
     7  atr               – ATR(14) / Close
 
-  Level-2 order-book (8)  – real or simulated via simulate_l2_features_from_ohlcv:
-    8  l2_spread          – relative bid-ask spread
-    9  l2_imbalance       – bid volume / (bid + ask) volume at top N levels
-   10  l2_bid_top1_share  – top-1 bid volume share within total bid depth
-   11  l2_ask_top1_share  – top-1 ask volume share within total ask depth
-   12  l2_vwap_bid_dev    – VWAP bid deviation from mid (normalised)
-   13  l2_vwap_ask_dev    – VWAP ask deviation from mid (normalised)
-   14  l2_log_bid_depth   – log(1 + total bid volume at depth)
-   15  l2_log_ask_depth   – log(1 + total ask volume at depth)
 """
 
 from __future__ import annotations
@@ -117,10 +108,10 @@ def _compute_technical_indicators(df: pd.DataFrame) -> pd.DataFrame:
 
 class BitcoinEnv(TradingEnv):
     """
-    Bitcoin trading environment with Level-2 order-book features.
+    Bitcoin trading environment with OHLCV-derived technical features.
 
     Extends :class:`trading_env.TradingEnv` with richer feature engineering
-    (technical indicators + L2 order-book data) and Binance-style BTC fees.
+    (technical indicators) and Binance-style BTC fees.
 
     Parameters
     ----------
@@ -128,10 +119,6 @@ class BitcoinEnv(TradingEnv):
         OHLCV DataFrame (columns: Open, High, Low, Close, Volume).
         Any DatetimeIndex is accepted; numeric positional indexing is used
         internally.
-    l2_df : pd.DataFrame, optional
-        Pre-computed L2 feature DataFrame with 8 columns in the same order as
-        ``OrderBookSnapshot.to_features()``.  If *None*, features are
-        simulated via :func:`data.ccxt_fetcher.simulate_l2_features_from_ohlcv`.
     window_size : int
         Number of past bars visible to the agent (default: 20).
     frame_bound : tuple[int, int], optional
@@ -146,13 +133,11 @@ class BitcoinEnv(TradingEnv):
     """
 
     OHLCV_FEATURE_DIM: int = 8
-    L2_FEATURE_DIM: int    = 8
-    TOTAL_FEATURE_DIM: int = OHLCV_FEATURE_DIM + L2_FEATURE_DIM  # 16
+    TOTAL_FEATURE_DIM: int = OHLCV_FEATURE_DIM
 
     def __init__(
         self,
         df: pd.DataFrame,
-        l2_df: Optional[pd.DataFrame] = None,
         window_size: int = 20,
         frame_bound: Optional[Tuple[int, int]] = None,
         render_mode: Optional[str] = None,
@@ -160,8 +145,6 @@ class BitcoinEnv(TradingEnv):
         trade_fee_ask_percent: float = 0.001,
     ):
         assert "Close" in df.columns, "df must contain a 'Close' column"
-
-        self._l2_df = l2_df
 
         if frame_bound is None:
             frame_bound = (window_size, len(df))
@@ -181,7 +164,7 @@ class BitcoinEnv(TradingEnv):
 
     def _process_data(self) -> Tuple[np.ndarray, np.ndarray, int]:
         """
-        Build the 16-feature signal matrix for the episode frame.
+        Build the 8-feature signal matrix for the episode frame.
 
         Technical indicators are computed on the *full* df so that EMA / RSI
         warm-up periods are satisfied before the episode slice begins.  The
@@ -193,22 +176,13 @@ class BitcoinEnv(TradingEnv):
         # 1. Compute indicators on full df (ensures proper EMA / RSI warmup)
         tech = _compute_technical_indicators(self.df)  # (len(df), 8)
 
-        # 2. L2 features (real or simulated)
-        if self._l2_df is not None:
-            l2 = self._l2_df
-        else:
-            from data.ccxt_fetcher import simulate_l2_features_from_ohlcv
-            l2 = simulate_l2_features_from_ohlcv(self.df)   # (len(df), 8)
-
-        # 3. Slice to episode frame (includes lookback window)
+        # 2. Slice to episode frame (includes lookback window)
         idx = slice(start - self.window_size, end)
         raw_prices     = self.df["Close"].to_numpy(dtype=np.float32)[idx]
         tech_slice     = tech.values[idx]    # (frame_len, 8)
-        l2_slice       = l2.values[idx]      # (frame_len, 8)
+        signal_features = tech_slice  # (frame_len, 8)
 
-        signal_features = np.concatenate([tech_slice, l2_slice], axis=1)  # (frame_len, 16)
-
-        # 4. Z-score normalise per column over the episode slice
+        # 3. Z-score normalise per column over the episode slice
         EPS = 1e-10
         mean = signal_features.mean(axis=0)
         std  = signal_features.std(axis=0)
@@ -297,6 +271,5 @@ class BitcoinEnv(TradingEnv):
     def __repr__(self) -> str:
         return (
             f"BitcoinEnv(frame_bound={self.frame_bound}, "
-            f"window_size={self.window_size}, "
-            f"l2={'real' if self._l2_df is not None else 'simulated'})"
+            f"window_size={self.window_size})"
         )
