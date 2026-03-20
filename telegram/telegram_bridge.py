@@ -9,7 +9,9 @@ import logging
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, MessageHandler, filters, ContextTypes
 
-BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "8512768565:AAE1sMTam-sLaFciMeM8Hqm_uP8Y8kxiiqY")
+BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+if not BOT_TOKEN:
+    raise ValueError("TELEGRAM_BOT_TOKEN environment variable is not set")
 CLAUDE_PATH = r"C:\Users\Administrator\.local\bin\claude.exe"
 WORK_DIR = r"C:\Users\Administrator\Documents\GitHub\vbt_vc"
 
