@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh repo:*)",
+      "Bash(\"/c/Program Files/GitHub CLI/gh.exe\" api repos/Dbecker1601/vbt_vc/installation 2>&1)",
+      "Bash(mv telegram_bridge.py telegram/)",
+      "Bash(mv trading_env/ trading/)",
+      "Bash(mv train.py trading/)",
+      "Bash(mv train_bitcoin.py trading/)",
+      "Bash(mv data/ trading/)",
+      "Bash(python -c \":*)",
+      "Bash(__NEW_LINE_a54ef7b02091f18d__ cd:*)",
+      "Bash(pip install:*)",
+      "Bash(python:*)"
+    ]
+  }
+}
